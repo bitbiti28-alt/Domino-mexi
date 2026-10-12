@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14532d">
+  <title>Placar Dominó Mexicano</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>🁫 Dominó Mexicano</h1>
+    <button id="btn-new-game" class="ghost" hidden>Novo jogo</button>
+  </header>
+
+  <main>
+    <!-- Configuração -->
+    <section id="screen-setup" class="screen">
+      <div class="card">
+        <h2>Jogadores</h2>
+        <form id="form-player" class="row">
+          <input id="input-player" type="text" placeholder="Nome do jogador" autocomplete="off" maxlength="24" required>
+          <button type="submit">Adicionar</button>
+        </form>
+        <ul id="setup-players" class="player-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>Duplo inicial</h2>
+        <p class="muted">O jogo começa na rodada do duplo mais alto e desce até o duplo zero.</p>
+        <select id="select-max-double">
+          <option value="6">Duplo 6 (7 rodadas)</option>
+          <option value="9">Duplo 9 (10 rodadas)</option>
+          <option value="12" selected>Duplo 12 (13 rodadas)</option>
+          <option value="15">Duplo 15 (16 rodadas)</option>
+        </select>
+        <label class="check">
+          <input id="check-double-blank" type="checkbox">
+          Duplo zero (branco/branco) vale 50 pontos
+        </label>
+      </div>
+
+      <button id="btn-start" class="primary big" disabled>Começar jogo</button>
+    </section>
+
+    <!-- Jogo -->
+    <section id="screen-game" class="screen" hidden>
+      <div class="card round-header">
+        <div>
+          <div class="muted">Rodada <span id="round-number"></span> de <span id="round-total"></span></div>
+          <div class="round-double">Duplo <span id="round-double"></span></div>
+        </div>
+        <div class="round-nav">
+          <button id="btn-prev-round" class="ghost" aria-label="Rodada anterior">◀</button>
+          <button id="btn-next-round" class="ghost" aria-label="Próxima rodada">▶</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pontos na mão</h2>
+        <p class="muted">Tire uma foto das pedras que sobraram com cada jogador, ou digite o valor. Quem bateu fica com 0.</p>
+        <ul id="round-entries" class="entries"></ul>
+        <button id="btn-finish-round" class="primary big">Fechar rodada</button>
+      </div>
+
+      <div class="card">
+        <h2>Placar</h2>
+        <div class="table-wrap">
+          <table id="scoreboard"></table>
+        </div>
+        <p class="muted small">Menor total vence.</p>
+      </div>
+    </section>
+
+    <!-- Final -->
+    <section id="screen-final" class="screen" hidden>
+      <div class="card">
+        <h2>🏆 Resultado final</h2>
+        <ol id="final-ranking" class="ranking"></ol>
+      </div>
+      <div class="card">
+        <h2>Placar completo</h2>
+        <div class="table-wrap">
+          <table id="final-scoreboard"></table>
+        </div>
+      </div>
+      <button id="btn-reopen" class="ghost big">Voltar para as rodadas</button>
+      <button id="btn-new-game-2" class="primary big">Novo jogo (mesmos jogadores)</button>
+    </section>
+  </main>
+
+  <!-- Revisão da foto -->
+  <dialog id="dialog-photo">
+    <div class="dialog-body">
+      <h2 id="photo-title">Foto</h2>
+      <p class="muted small">Toque num ponto marcado para removê-lo. Toque num ponto não marcado para adicioná-lo.</p>
+      <div class="canvas-wrap">
+        <canvas id="photo-canvas"></canvas>
+        <div id="photo-loading" class="loading">Analisando…</div>
+      </div>
+      <div class="photo-total">
+        <span>Pontos detectados:</span>
+        <strong id="photo-count">0</strong>
+      </div>
+      <label class="row adjust">
+        <span>Ajuste extra</span>
+        <input id="photo-extra" type="number" inputmode="numeric" value="0">
+      </label>
+      <label id="photo-blank-row" class="check">
+        <input id="photo-blank" type="checkbox">
+        Tem o duplo zero (soma +50)
+      </label>
+      <div class="row end">
+        <button id="photo-retake" class="ghost">Outra foto</button>
+        <button id="photo-cancel" class="ghost">Cancelar</button>
+        <button id="photo-ok" class="primary">Usar <span id="photo-ok-total">0</span> pontos</button>
+      </div>
+    </div>
+  </dialog>
+
+  <input id="file-input" type="file" accept="image/*" capture="environment" hidden>
+
+  <script src="detector.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
