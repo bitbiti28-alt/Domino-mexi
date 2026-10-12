@@ -30,16 +30,25 @@
 
       <div class="card">
         <h2>Duplo inicial</h2>
-        <p class="muted">O jogo começa na rodada do duplo mais alto e desce até o duplo zero.</p>
+        <p class="muted">O jogo começa na rodada do duplo mais alto e desce um duplo por rodada.</p>
         <select id="select-max-double">
-          <option value="6">Duplo 6 (7 rodadas)</option>
-          <option value="9">Duplo 9 (10 rodadas)</option>
-          <option value="12" selected>Duplo 12 (13 rodadas)</option>
-          <option value="15">Duplo 15 (16 rodadas)</option>
+          <option value="6">Duplo 6</option>
+          <option value="9">Duplo 9</option>
+          <option value="12" selected>Duplo 12</option>
+          <option value="15">Duplo 15</option>
         </select>
         <label class="check">
-          <input id="check-double-blank" type="checkbox">
-          Duplo zero (branco/branco) vale 50 pontos
+          <input id="check-zero-round" type="checkbox">
+          Jogar também a rodada do duplo zero
+        </label>
+        <p id="rounds-summary" class="muted small"></p>
+      </div>
+
+      <div class="card">
+        <h2>Regras de pontuação</h2>
+        <label class="check">
+          <input id="check-blank-100" type="checkbox">
+          Duplo zero vale 100 pontos se for a única pedra que sobrou
         </label>
       </div>
 
@@ -61,7 +70,7 @@
 
       <div class="card">
         <h2>Pontos na mão</h2>
-        <p class="muted">Tire uma foto das pedras que sobraram com cada jogador, ou digite o valor. Quem bateu fica com 0.</p>
+        <p class="muted">Tire uma foto das pedras que sobraram com cada jogador, ou digite o valor. Quem bateu fica com 0. Se só sobrou o duplo zero, marque isso na tela da foto ou digite 100.</p>
         <ul id="round-entries" class="entries"></ul>
         <button id="btn-finish-round" class="primary big">Fechar rodada</button>
       </div>
@@ -90,7 +99,7 @@
       <button id="btn-reopen" class="ghost big">Voltar para as rodadas</button>
       <button id="btn-new-game-2" class="primary big">Novo jogo (mesmos jogadores)</button>
     </section>
-    <p class="version">versão 3 · detecção para pontos coloridos</p>
+    <p class="version">versão 4 · duplo zero sozinho vale 100</p>
   </main>
 
   <!-- Revisão da foto -->
@@ -112,7 +121,7 @@
       </label>
       <label id="photo-blank-row" class="check">
         <input id="photo-blank" type="checkbox">
-        Tem o duplo zero (soma +50)
+        Só sobrou o duplo zero (vale 100 pontos)
       </label>
       <div class="row end">
         <button id="photo-retake" class="ghost">Outra foto</button>

@@ -5,14 +5,17 @@ App web (funciona no celular, inclusive offline) para marcar a pontuação do **
 ## Como usar
 
 1. Cadastre os nomes dos jogadores e escolha o duplo inicial (6, 9, 12 ou 15).
-2. A cada rodada (do duplo mais alto até o duplo zero), lance os pontos de cada jogador:
+   Por padrão o jogo vai do duplo inicial até o duplo 1 (duplo 12 = 12 rodadas);
+   marque “Jogar também a rodada do duplo zero” para incluir mais uma.
+2. A cada rodada, lance os pontos de cada jogador:
    - **📷** — tire uma foto das pedras que sobraram na mão; o app conta os pontos automaticamente.
      Na revisão, toque num ponto marcado para removê-lo, ou num ponto esquecido para adicioná-lo.
    - **Bateu** — o jogador que ficou sem pedras marca 0.
    - Ou digite o valor direto no campo.
 3. **Fechar rodada** passa para o próximo duplo. O placar mostra o total de cada um — **menor total vence**.
 
-Opção: “Duplo zero vale 50 pontos” — mostra uma caixinha na tela da foto para somar +50.
+Regra do duplo zero: se a única pedra que sobrou na mão for o duplo zero, ela vale 100 pontos.
+Marque “Só sobrou o duplo zero” na tela da foto (ou digite 100). A regra pode ser desligada na tela inicial.
 
 O jogo fica salvo no aparelho (localStorage), então dá para fechar e voltar depois.
 

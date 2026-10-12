@@ -13,21 +13,30 @@
 
   // ---------- Estado ----------
 
+  const BLANK_ALONE_POINTS = 100;
+
   let state = load() || freshState([]);
 
   function freshState(players) {
-    return { view: 'setup', players, maxDouble: 12, doubleBlank50: false, rounds: [], current: 0 };
+    return { view: 'setup', players, maxDouble: 12, zeroRound: false, blankAlone100: true, rounds: [], current: 0 };
   }
 
   function load() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+    if (!saved) return null;
+    // Jogos salvos antes destas opções existirem tinham a rodada do duplo zero.
+    if (saved.zeroRound === undefined) saved.zeroRound = saved.rounds.length > 0;
+    if (saved.blankAlone100 === undefined) saved.blankAlone100 = true;
+    delete saved.doubleBlank50;
+    return saved;
   }
 
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* sem armazenamento */ }
   }
 
-  const roundCount = () => state.maxDouble + 1;
+  const roundCount = () => state.maxDouble + (state.zeroRound ? 1 : 0);
   const doubleOf = (roundIndex) => state.maxDouble - roundIndex;
   const isRoundFilled = (r) => state.players.every(p => Number.isFinite(r.scores[p.id]));
 
@@ -72,7 +81,10 @@
       } }),
     ])));
     $('select-max-double').value = String(state.maxDouble);
-    $('check-double-blank').checked = state.doubleBlank50;
+    $('check-zero-round').checked = state.zeroRound;
+    $('check-blank-100').checked = state.blankAlone100;
+    $('rounds-summary').textContent =
+      `${roundCount()} rodadas: do duplo ${state.maxDouble} ao duplo ${doubleOf(roundCount() - 1)}.`;
     $('btn-start').disabled = state.players.length < 2;
   }
 
@@ -148,8 +160,9 @@
     $('input-player').focus();
   });
 
-  $('select-max-double').addEventListener('change', (e) => { state.maxDouble = Number(e.target.value); save(); });
-  $('check-double-blank').addEventListener('change', (e) => { state.doubleBlank50 = e.target.checked; save(); });
+  $('select-max-double').addEventListener('change', (e) => { state.maxDouble = Number(e.target.value); save(); renderSetup(); });
+  $('check-zero-round').addEventListener('change', (e) => { state.zeroRound = e.target.checked; save(); renderSetup(); });
+  $('check-blank-100').addEventListener('change', (e) => { state.blankAlone100 = e.target.checked; save(); });
 
   $('btn-start').addEventListener('click', () => {
     state.rounds = [{ scores: {} }];
@@ -181,7 +194,7 @@
   $('btn-reopen').addEventListener('click', () => { state.view = 'game'; save(); render(); });
 
   function newGame() {
-    state = Object.assign(freshState(state.players), { maxDouble: state.maxDouble, doubleBlank50: state.doubleBlank50 });
+    state = Object.assign(freshState(state.players), { maxDouble: state.maxDouble, zeroRound: state.zeroRound, blankAlone100: state.blankAlone100 });
     save(); render();
   }
   $('btn-new-game').addEventListener('click', () => {
@@ -209,7 +222,7 @@
     if (!dialog.open) {
       $('photo-extra').value = 0;
       $('photo-blank').checked = false;
-      $('photo-blank-row').hidden = !state.doubleBlank50;
+      $('photo-blank-row').hidden = !state.blankAlone100;
       dialog.showModal();
     }
     $('photo-loading').hidden = false;
@@ -264,8 +277,8 @@
   }
 
   function photoTotal() {
-    const blank = state.doubleBlank50 && $('photo-blank').checked ? 50 : 0;
-    return photo.pips.length + blank + (Number($('photo-extra').value) || 0);
+    if (state.blankAlone100 && $('photo-blank').checked) return BLANK_ALONE_POINTS;
+    return photo.pips.length + (Number($('photo-extra').value) || 0);
   }
 
   function updatePhotoTotal() {
