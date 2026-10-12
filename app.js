@@ -18,15 +18,14 @@
   let state = load() || freshState([]);
 
   function freshState(players) {
-    return { view: 'setup', players, maxDouble: 12, zeroRound: false, blankAlone100: true, rounds: [], current: 0 };
+    return { view: 'setup', players, maxDouble: 12, zeroRound: true, blankAlone100: true, rounds: [], current: 0 };
   }
 
   function load() {
     let saved;
     try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
     if (!saved) return null;
-    // Jogos salvos antes destas opções existirem tinham a rodada do duplo zero.
-    if (saved.zeroRound === undefined) saved.zeroRound = saved.rounds.length > 0;
+    if (saved.zeroRound === undefined) saved.zeroRound = true;
     if (saved.blankAlone100 === undefined) saved.blankAlone100 = true;
     delete saved.doubleBlank50;
     return saved;

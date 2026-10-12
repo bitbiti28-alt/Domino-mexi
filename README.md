@@ -5,8 +5,8 @@ App web (funciona no celular, inclusive offline) para marcar a pontuação do **
 ## Como usar
 
 1. Cadastre os nomes dos jogadores e escolha o duplo inicial (6, 9, 12 ou 15).
-   Por padrão o jogo vai do duplo inicial até o duplo 1 (duplo 12 = 12 rodadas);
-   marque “Jogar também a rodada do duplo zero” para incluir mais uma.
+   O jogo vai do duplo inicial até o duplo zero (duplo 12 = 13 rodadas);
+   desmarque “Jogar também a rodada do duplo zero” para terminar no duplo 1.
 2. A cada rodada, lance os pontos de cada jogador:
    - **📷** — tire uma foto das pedras que sobraram na mão; o app conta os pontos automaticamente.
      Na revisão, toque num ponto marcado para removê-lo, ou num ponto esquecido para adicioná-lo.
