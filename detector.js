@@ -5,9 +5,11 @@
  *    pedra é preenchida, para que pontos perto da borda continuem dentro dela.
  * 2. Ponto = pixel da pedra bem mais escuro (ou colorido) que o branco da
  *    própria pedra ao redor — assim luz desigual e sombras não atrapalham.
- * 3. Pontos grudados entre si ou na linha do meio são separados pela
- *    transformada de distância: o centro de cada bolinha é "grosso" (distância
- *    à borda ≈ raio), enquanto a linha divisória é fina.
+ * 3. A linha do meio de cada pedra localiza as pedras: só contam pontos dentro
+ *    delas (cartas, naipes da toalha e outros objetos ficam de fora).
+ * 4. Cada mancha é classificada pelo tamanho e formato: ponto (mesmo oco por
+ *    reflexo), linha do meio, desenho grande ou vários pontos grudados — estes
+ *    separados pela transformada de distância (o centro de cada bolinha é "grosso").
  * Funciona melhor com as pedras sobre uma superfície escura ou colorida.
  */
 (function (global) {
@@ -189,21 +191,56 @@
 
     if (debug) Object.assign(debug, { tile, body, pip: pip.slice() });
 
-    // 4. Raio típico de um ponto, a partir das manchas isoladas e redondas.
-    //    Usa a caixa envolvente: reflexos de luz deixam o ponto "oco", mas não mudam seu tamanho.
+    // 4. Linhas do meio: retângulos escuros, compridos e cheios. Cada uma indica uma
+    //    pedra; só contam pontos dentro dessas pedras (cartas, naipes da toalha, mão e
+    //    outros objetos da foto ficam de fora).
+    const raw = analyze(pip, w, h);
+    const maxSide = Math.max(w, h);
+    const bars = [];
+    // Linha do meio de verdade tem pedra dos dois lados e nas pontas (a borda escura de
+    // uma carta ou do tapete, não).
+    const onBody = (x, y) => {
+      const xi = Math.round(x), yi = Math.round(y);
+      return xi >= 0 && yi >= 0 && xi < w && yi < h && body[yi * w + xi] === 1;
+    };
+    const surroundedByTile = (c) => {
+      const off = c.S / 2 + Math.max(4, 0.6 * c.S);
+      let ok = 0, total = 0;
+      const probe = (u, v) => {
+        total++;
+        if (onBody(c.x + u * c.ux - v * c.uy, c.y + u * c.uy + v * c.ux)) ok++;
+      };
+      for (let k = -0.4; k <= 0.401; k += 0.1) { probe(k * c.L, off); probe(k * c.L, -off); }
+      probe(c.L / 2 + off, 0); probe(-c.L / 2 - off, 0);
+      return ok / total >= 0.85;
+    };
+    raw.forEach(c => {
+      if (c.S >= 2 && c.L / c.S > 3.2 && c.area / (c.L * c.S) > 0.7 &&
+          c.L >= minDim / 40 && c.L <= 0.6 * maxSide && surroundedByTile(c)) bars.push(c);
+    });
+    if (debug) debug.bars = bars;
+    // Pontos ficam num retângulo em volta da linha: até ~0,55× o comprimento dela para
+    // os lados e ~1,1× para cima e para baixo (com folga).
+    const inTile = (x, y) => bars.some(b => {
+      const dx = x - b.x, dy = y - b.y;
+      return Math.abs(dx * b.ux + dy * b.uy) <= 0.6 * b.L && Math.abs(-dx * b.uy + dy * b.ux) <= 1.25 * b.L;
+    });
+    const useTiles = bars.length > 0;
+
+    // 5. Raio típico de um ponto, a partir das manchas isoladas e redondas (dentro das pedras).
+    //    Usa a caixa envolvente: reflexos deixam o ponto "oco", mas não mudam seu tamanho.
     const minArea = Math.max(5, n * 0.00001);
     const radii = [];
-    for (const s of components(pip, w, h, 1).stats) {
-      if (s.area < minArea) continue;
-      const bw = s.maxx - s.minx + 1, bh = s.maxy - s.miny + 1;
-      if (Math.max(bw, bh) / Math.min(bw, bh) <= 1.4 && s.area / (bw * bh) >= 0.3) radii.push((bw + bh) / 4);
-    }
+    raw.forEach(c => {
+      if (c.area < minArea || (useTiles && !inTile(c.x, c.y))) return;
+      if (c.S / c.L >= 0.7 && c.area / (c.L * c.S) >= 0.3) radii.push((c.L + c.S) / 4);
+    });
     const rTyp = median(radii);
     if (debug) debug.rTyp = rTyp;
     if (!rTyp) return { pips: [] };
     const D = 2 * rTyp;
 
-    // 5. Preenche reflexos de luz dentro dos pontos (buracos pequenos na máscara).
+    // 6. Preenche reflexos de luz dentro dos pontos (buracos pequenos na máscara).
     const holes = components(pip, w, h, 0);
     const maxHole = Math.PI * rTyp * rTyp * 0.6;
     for (let i = 0; i < n; i++) {
@@ -211,7 +248,7 @@
       if (l && !holes.stats[l - 1].border && holes.stats[l - 1].area < maxHole) pip[i] = 1;
     }
 
-    // 6. Transformada de distância (chanfro 3-4): distância de cada pixel até fora do ponto.
+    // 7. Transformada de distância (chanfro 3-4): distância de cada pixel até fora do ponto.
     const dist = new Float32Array(n);
     const INF = 1e9;
     for (let i = 0; i < n; i++) dist[i] = pip[i] ? INF : 0;
@@ -244,50 +281,21 @@
       }
     }
 
-    // 7. Forma de cada mancha: centro, eixo principal, comprimento (L) e largura (S).
-    const { labels, stats } = components(pip, w, h, 1);
-    const m = stats.length;
-    const sx = new Float64Array(m), sy = new Float64Array(m), sxx = new Float64Array(m),
-      syy = new Float64Array(m), sxy = new Float64Array(m), maxD = new Float32Array(m);
-    for (let i = 0; i < n; i++) {
-      const l = labels[i] - 1;
-      if (l < 0) continue;
-      const x = i % w, y = (i / w) | 0;
-      sx[l] += x; sy[l] += y; sxx[l] += x * x; syy[l] += y * y; sxy[l] += x * y;
-      if (dist[i] > maxD[l]) maxD[l] = dist[i];
-    }
-    const shape = stats.map((s, l) => {
-      const cx = sx[l] / s.area, cy = sy[l] / s.area;
-      const vxx = sxx[l] / s.area - cx * cx, vyy = syy[l] / s.area - cy * cy, vxy = sxy[l] / s.area - cx * cy;
-      const th = 0.5 * Math.atan2(2 * vxy, vxx - vyy);
-      return { cx, cy, ux: Math.cos(th), uy: Math.sin(th), u0: Infinity, u1: -Infinity, v0: Infinity, v1: -Infinity };
-    });
-    for (let i = 0; i < n; i++) {
-      const l = labels[i] - 1;
-      if (l < 0) continue;
-      const sh = shape[l], dx = (i % w) - sh.cx, dy = ((i / w) | 0) - sh.cy;
-      const u = dx * sh.ux + dy * sh.uy, v = -dx * sh.uy + dy * sh.ux;
-      if (u < sh.u0) sh.u0 = u;
-      if (u > sh.u1) sh.u1 = u;
-      if (v < sh.v0) sh.v0 = v;
-      if (v > sh.v1) sh.v1 = v;
-    }
-
     // 8. Classifica cada mancha.
+    const blobs = analyze(pip, w, h, dist);
     const pips = [];
     const clusters = new Set();
-    stats.forEach((s, l) => {
-      const sh = shape[l];
-      const L = sh.u1 - sh.u0 + 1, S = sh.v1 - sh.v0 + 1;
-      if (s.area < minArea || L < 0.5 * D) return;               // sujeira
-      if (maxD[l] / 3 > 1.6 * rTyp) return;                      // mancha grande demais: desenho da mesa
-      if (S < 0.45 * D) return;                                  // fina: fresta entre pedras, risco
-      if (L <= 1.45 * D) {                                        // do tamanho de um ponto (mesmo que oco)
-        pips.push({ x: sh.cx, y: sh.cy, r: Math.max(L, S) / 2 });
+    blobs.forEach((c, l) => {
+      const { L, S } = c;
+      if (c.area < minArea || L < 0.5 * D) return;               // sujeira
+      if (c.maxD / 3 > 1.6 * rTyp) return;                       // mancha grande demais: desenho
+      if (S < 0.45 * D) return;                                  // fina: risco, fresta, linha do meio
+      if (L <= 1.45 * D) {                                       // do tamanho de um ponto (mesmo que oco)
+        pips.push({ x: c.x, y: c.y, r: Math.max(L, S) / 2 });
         return;
       }
-      if (S < 0.9 * D && L / S > 3.2 && s.area / (L * S) > 0.75) return; // retângulo cheio: linha do meio
-      clusters.add(l + 1);                                        // vários pontos grudados
+      if (S < 0.9 * D && L / S > 3.2 && c.area / (L * S) > 0.75) return; // linha do meio grossa
+      clusters.add(l + 1);                                       // vários pontos grudados
     });
 
     // 9. Pontos grudados: separa pelos máximos locais "grossos" da distância.
@@ -296,7 +304,7 @@
     for (let y = 1; y < h - 1; y++) {
       for (let x = 1; x < w - 1; x++) {
         const i = y * w + x, v = dist[i];
-        if (v < minCore || !clusters.has(labels[i])) continue;
+        if (v < minCore || !clusters.has(blobs.labels[i])) continue;
         if (v >= dist[i - 1] && v >= dist[i + 1] && v >= dist[i - w] && v >= dist[i + w] &&
             v >= dist[i - w - 1] && v >= dist[i - w + 1] && v >= dist[i + w - 1] && v >= dist[i + w + 1]) {
           peaks.push({ x, y, v });
@@ -305,12 +313,113 @@
     }
     peaks.sort((a, b) => b.v - a.v);
     const minSep2 = (rTyp * 1.3) ** 2;
-    const split = [];
     for (const p of peaks) {
-      if (split.some(q => (q.x - p.x) ** 2 + (q.y - p.y) ** 2 < minSep2)) continue;
-      split.push({ x: p.x, y: p.y, r: Math.max(p.v / 3, rTyp * 0.8) });
+      if (pips.some(q => (q.x - p.x) ** 2 + (q.y - p.y) ** 2 < minSep2)) continue;
+      pips.push({ x: p.x, y: p.y, r: Math.max(p.v / 3, rTyp * 0.8) });
     }
-    return { pips: pips.concat(split) };
+
+    if (!useTiles) return { pips };
+
+    // Cor da pedra: média dos pixels brancos (não ponto) no miolo das pedras.
+    const inCore = (x, y) => bars.some(b => {
+      const dx = x - b.x, dy = y - b.y;
+      return Math.abs(dx * b.ux + dy * b.uy) <= 0.35 * b.L && Math.abs(-dx * b.uy + dy * b.ux) <= 0.9 * b.L;
+    });
+    let tr = 0, tg = 0, tb = 0, tn = 0;
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const i = y * w + x;
+        if (!tile[i] || pip[i] || !inCore(x, y)) continue;
+        tr += d[i * 4]; tg += d[i * 4 + 1]; tb += d[i * 4 + 2]; tn++;
+      }
+    }
+    tr /= tn || 1; tg /= tn || 1; tb /= tn || 1;
+    // Fração do contorno do ponto (a 1,6 raio) que tem cor de pedra; amostras que caem
+    // em outro ponto não contam.
+    const ringTile = (p) => {
+      let ok = 0, total = 0;
+      for (let k = 0; k < 24; k++) {
+        const a = k * Math.PI / 12;
+        const x = Math.round(p.x + 1.6 * rTyp * Math.cos(a)), y = Math.round(p.y + 1.6 * rTyp * Math.sin(a));
+        if (x < 0 || y < 0 || x >= w || y >= h) { total++; continue; }
+        const i = y * w + x;
+        if (pip[i]) continue;
+        total++;
+        const dr = d[i * 4] - tr, dg = d[i * 4 + 1] - tg, db = d[i * 4 + 2] - tb, mean = (dr + dg + db) / 3;
+        if (tile[i] && (dr - mean) ** 2 + (dg - mean) ** 2 + (db - mean) ** 2 < 28 * 28) ok++;
+      }
+      return total ? ok / total : 0;
+    };
+
+    // 10. Fica só o que está numa pedra. Pedra cuja linha do meio não foi achada também
+    //     vale, se for uma região branca solta com formato de dominó (retângulo ~2:1, sem
+    //     linha e sem encostar na beirada da foto). Cartas, toalha e mão não passam.
+    const re = Math.max(2, Math.round(rTyp * 0.8));
+    const regions = analyze(morph(body, w, h, re, false), w, h);
+    const regionAt = (x, y) => regions.labels[Math.round(Math.min(h - 1, Math.max(0, y))) * w +
+                                               Math.round(Math.min(w - 1, Math.max(0, x)))];
+    const withBar = new Set(bars.map(b => regionAt(b.x, b.y)));
+    const looksLikeTile = (r) => {
+      const L = r.L + 2 * re, S = r.S + 2 * re;
+      const margin = re + 2;
+      const inside = r.x - r.L / 2 > margin && r.y - r.L / 2 > margin &&
+        r.x + r.L / 2 < w - 1 - margin && r.y + r.L / 2 < h - 1 - margin;
+      return inside && L / S >= 1.5 && L / S <= 2.7 && r.area / (r.L * r.S) > 0.8 && S >= 2.5 * D && S <= 12 * D;
+    };
+    return {
+      pips: pips.filter(p => {
+        if (ringTile(p) < 0.6) return false;      // em volta não é pedra: pele, carta, toalha
+        if (inTile(p.x, p.y)) return true;
+        const l = regionAt(p.x, p.y);
+        return !!l && !withBar.has(l) && looksLikeTile(regions[l - 1]);
+      }),
+    };
+  }
+
+  /**
+   * Forma de cada mancha (componente 4-conectado de mask === 1): área, centro da caixa
+   * orientada (x, y), eixo principal (ux, uy), comprimento L, largura S e, se `dist`
+   * for dado, a maior distância interna (maxD). O array devolvido tem `.labels`.
+   */
+  function analyze(mask, w, h, dist) {
+    const n = w * h;
+    const { labels, stats } = components(mask, w, h, 1);
+    const m = stats.length;
+    const sx = new Float64Array(m), sy = new Float64Array(m), sxx = new Float64Array(m),
+      syy = new Float64Array(m), sxy = new Float64Array(m), maxD = new Float32Array(m);
+    for (let i = 0; i < n; i++) {
+      const l = labels[i] - 1;
+      if (l < 0) continue;
+      const x = i % w, y = (i / w) | 0;
+      sx[l] += x; sy[l] += y; sxx[l] += x * x; syy[l] += y * y; sxy[l] += x * y;
+      if (dist && dist[i] > maxD[l]) maxD[l] = dist[i];
+    }
+    const out = stats.map((s, l) => {
+      const cx = sx[l] / s.area, cy = sy[l] / s.area;
+      const vxx = sxx[l] / s.area - cx * cx, vyy = syy[l] / s.area - cy * cy, vxy = sxy[l] / s.area - cx * cy;
+      const th = 0.5 * Math.atan2(2 * vxy, vxx - vyy);
+      return { area: s.area, cx, cy, ux: Math.cos(th), uy: Math.sin(th), maxD: maxD[l],
+        u0: Infinity, u1: -Infinity, v0: Infinity, v1: -Infinity };
+    });
+    for (let i = 0; i < n; i++) {
+      const l = labels[i] - 1;
+      if (l < 0) continue;
+      const c = out[l], dx = (i % w) - c.cx, dy = ((i / w) | 0) - c.cy;
+      const u = dx * c.ux + dy * c.uy, v = -dx * c.uy + dy * c.ux;
+      if (u < c.u0) c.u0 = u;
+      if (u > c.u1) c.u1 = u;
+      if (v < c.v0) c.v0 = v;
+      if (v > c.v1) c.v1 = v;
+    }
+    for (const c of out) {
+      c.L = c.u1 - c.u0 + 1;
+      c.S = c.v1 - c.v0 + 1;
+      const mu = (c.u0 + c.u1) / 2, mv = (c.v0 + c.v1) / 2;
+      c.x = c.cx + c.ux * mu - c.uy * mv;
+      c.y = c.cy + c.uy * mu + c.ux * mv;
+    }
+    out.labels = labels;
+    return out;
   }
 
   global.DominoDetector = { detectPips, MAX_SIDE };

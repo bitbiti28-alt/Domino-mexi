@@ -1,5 +1,5 @@
 // Rede primeiro, cache como reserva: funciona offline sem prender versões antigas.
-const CACHE = 'domino-mexicano-v6';
+const CACHE = 'domino-mexicano-v7';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'detector.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

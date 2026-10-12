@@ -21,12 +21,14 @@ O jogo fica salvo no aparelho (localStorage), então dá para fechar e voltar de
 
 ## Dicas para a foto
 
-- Espalhe as pedras **viradas para cima sobre uma superfície escura ou colorida** (mesa, pano, toalha), sem encostar umas nas outras.
+- Deixe as pedras **viradas para cima**, com a **linha do meio visível**, sobre uma superfície escura ou colorida
+  (mesa, pano, toalha) — ou na mão.
 - Fotografe de cima, com boa luz e sem reflexo forte.
-- Funciona com pontos pretos ou coloridos (pedras de Trem Mexicano).
+- Funciona com pontos pretos, cinza ou coloridos (pedras de Trem Mexicano).
 
-A contagem roda inteiramente no navegador (nenhuma foto é enviada a servidor). Ela conta os “buracos” redondos
-dentro das pedras brancas, por isso uma mesa branca atrapalha. Sempre confira o número antes de confirmar.
+A contagem roda inteiramente no navegador (nenhuma foto é enviada a servidor). O app acha a linha do meio de cada
+pedra e só conta as bolinhas dentro dela, então cartas, naipes da toalha, a mão e sujeiras pequenas não entram.
+Uma mesa branca atrapalha. Sempre confira o número antes de confirmar.
 
 ## Rodando
 
