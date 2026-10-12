@@ -2,7 +2,7 @@
   'use strict';
 
   const STORAGE_KEY = 'domino-mexicano:v1';
-  const MAX_PHOTO_SIDE = 1200;
+  const MAX_PHOTO_SIDE = window.DominoDetector.MAX_SIDE;
 
   const $ = (id) => document.getElementById(id);
   const el = (tag, props = {}, children = []) => {
